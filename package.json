@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n web,api -c auto \"vite\" \"node server.mjs\"",
+    "dev": "concurrently -n web,api -c auto \"vite\" \"node api/index.mjs\"",
     "dev:web": "vite",
-    "dev:server": "node server.mjs",
+    "dev:server": "node api/index.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
