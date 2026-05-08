@@ -61,14 +61,14 @@ Return ONLY valid JSON with this structure:
 {
   "funnyRoast": "A funny one-liner roast",
   "whatIsWeak": ["Weak 1", "Weak 2", "Weak 3"],
-  "betterMvpVersion": "A simpler MVP suggestion",
+  "betterMvpVersion": "A smarter, simpler way to start",
   "shortPitch": "A punchy pitch"
 }`;
 
 // ─── Route ───────────────────────────────────────────────────────────
-// On Vercel, this file handles /api/*
 app.post("/api/roast", async (req, res) => {
   const idea = typeof req.body?.idea === "string" ? req.body.idea : "";
+  const intensity = typeof req.body?.intensity === "string" ? req.body.intensity : "savage";
 
   if (!idea || !idea.trim()) {
     return res.status(400).json({ error: "Idea is required" });
@@ -77,6 +77,23 @@ app.post("/api/roast", async (req, res) => {
   if (!AI_API_KEY) {
     return res.status(500).json({ error: "AI_API_KEY is not configured on the server." });
   }
+
+  // Customize prompt based on intensity
+  let personaPrompt = "brutally honest but funny startup idea critic";
+  if (intensity === "gentle") {
+    personaPrompt = "constructive, kind, but witty startup mentor. Roast the idea gently with a smile";
+  } else if (intensity === "vc") {
+    personaPrompt = "skeptical, data-driven, and slightly arrogant Silicon Valley Venture Capitalist. Roast the idea based on market viability and unit economics";
+  }
+
+  const systemPrompt = `You are IdeaRoaster AI — a ${personaPrompt}.
+Return ONLY valid JSON with this structure:
+{
+  "funnyRoast": "A funny one-liner roast",
+  "whatIsWeak": ["Weak 1", "Weak 2", "Weak 3"],
+  "betterMvpVersion": "A smarter, simpler way to start",
+  "shortPitch": "A punchy pitch"
+}`;
 
   try {
     const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
@@ -89,7 +106,7 @@ app.post("/api/roast", async (req, res) => {
         model: AI_MODEL,
         temperature: 0.8,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: `Roast this idea:\n\n${idea}` },
         ],
       }),
