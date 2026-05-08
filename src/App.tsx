@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Flame, Smile, Briefcase, RefreshCw, Send } from "lucide-react";
+import { Copy, Flame, Smile, Briefcase, RefreshCw, Send, Share2, Volume2, VolumeX, Download } from "lucide-react";
+import html2canvas from "html2canvas";
+import confetti from "canvas-confetti";
 
 interface RoastResult {
   funnyRoast: string;
@@ -13,11 +15,13 @@ const API_ENDPOINT = "/api/roast";
 
 const LOADING_MESSAGES = [
   "Sharpening the knives...",
-  "Checking my ego at the door...",
-  "Consulting with the ghost of Steve Jobs...",
+  "Consulting the ghost of failed startups...",
   "Analyzing your unit economics (lol)...",
   "Brewing some cold, hard truth...",
   "Preparing the savage burn...",
+  "Checking if your idea is just a wrapper...",
+  "Calculating the time to pivot...",
+  "Roasting with high-intensity flames...",
 ];
 
 function App() {
@@ -27,6 +31,8 @@ function App() {
   const [loadingMsg, setLoadingMsg] = useState("");
   const [error, setError] = useState("");
   const [result, setResult] = useState<RoastResult | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (loading) {
@@ -38,11 +44,21 @@ function App() {
     }
   }, [loading]);
 
+  const speak = (text: string) => {
+    if (isMuted) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.pitch = 0.8;
+    utterance.rate = 1.1;
+    window.speechSynthesis.speak(utterance);
+  };
+
   const handleRoast = async () => {
     if (!idea.trim()) return;
     setLoading(true);
     setError("");
     setResult(null);
+    window.speechSynthesis.cancel();
 
     try {
       const response = await fetch(API_ENDPOINT, {
@@ -55,8 +71,20 @@ function App() {
 
       const data: RoastResult = await response.json();
       setResult(data);
+      
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#f97316", "#ef4444", "#ec4899"]
+      });
+
+      setTimeout(() => {
+        speak(data.funnyRoast);
+      }, 500);
+
     } catch {
-      setError("Roast failed. The AI might be too shocked by this idea.");
+      setError("Roast failed. Try again with a clearer idea.");
     } finally {
       setLoading(false);
     }
@@ -66,24 +94,61 @@ function App() {
     await navigator.clipboard.writeText(text);
   };
 
-  return (
-    <div className="min-h-screen bg-[#0a0a1a] text-gray-200 flex flex-col items-center px-4 py-12 selection:bg-orange-500/30">
-      <div className="w-full max-w-2xl relative">
-        {/* Background glow */}
-        <div className="absolute -top-24 -left-24 w-64 h-64 bg-orange-500/10 blur-[100px] rounded-full" />
-        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-pink-500/10 blur-[100px] rounded-full" />
+  const exportAsImage = async () => {
+    if (!resultRef.current) return;
+    try {
+      // html2canvas fix: temporary remove problematic properties and use simple background
+      const element = resultRef.current;
+      const canvas = await html2canvas(element, {
+        backgroundColor: "#0a0a1a",
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Remove modern CSS features that html2canvas can't parse in the clone
+          const clonedElement = clonedDoc.body.querySelector("[data-export-area]");
+          if (clonedElement) {
+            (clonedElement as HTMLElement).style.backdropFilter = "none";
+          }
+        }
+      });
+      const link = document.createElement("a");
+      link.download = "idearoaster-card.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Roast card export failed. Try taking a screenshot instead!");
+    }
+  };
 
+  return (
+    <div className="min-h-screen bg-[#0a0a1a] text-[#f1f1f1] flex flex-col items-center px-4 py-12 selection:bg-[#f97316]/30 overflow-x-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-[#ea580c]/10 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-[#9333ea]/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: "2s" }} />
+      </div>
+
+      <div className="w-full max-w-2xl relative z-10">
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <h1 className="text-5xl font-extrabold mb-3 bg-gradient-to-r from-orange-400 via-red-400 to-pink-500 bg-clip-text text-transparent tracking-tight">
+          <div className="inline-block p-3 bg-[#f97316]/10 rounded-2xl mb-4 border border-[#f97316]/20">
+            <Flame className="text-[#f97316] animate-bounce" size={32} />
+          </div>
+          <h1 className="text-6xl font-black mb-3 bg-gradient-to-br from-white via-[#fb923c] to-[#ef4444] bg-clip-text text-transparent tracking-tight">
             IdeaRoaster AI
           </h1>
-          <p className="text-gray-400 text-lg">
-            Brutally honest feedback for your "next big thing."
+          <p className="text-[#9ca3af] text-xl font-medium mb-1">
+            Let AI roast your idea before the market does.
+          </p>
+          <p className="text-[#6b7280] text-sm max-w-md mx-auto">
+            Paste your startup, hackathon, crypto, or app idea and get a funny roast, weak points, and a better direction.
           </p>
         </motion.div>
 
@@ -91,107 +156,164 @@ function App() {
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-[#161633]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl mb-6"
+          className="bg-[#161633]/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl mb-8 relative group"
         >
-          <label className="block text-sm font-medium text-gray-400 mb-2">
-            What's the big idea?
-          </label>
+          <div className="absolute inset-0 bg-gradient-to-br from-[#f97316]/5 to-transparent rounded-3xl pointer-events-none" />
+          
+          <div className="flex justify-between items-end mb-3">
+            <label className="text-sm font-bold text-[#9ca3af] uppercase tracking-widest">
+              Paste your idea
+            </label>
+            <button 
+              onClick={() => setIsMuted(!isMuted)}
+              className="p-2 hover:bg-white/5 rounded-lg text-[#6b7280] hover:text-[#f97316] transition-colors"
+            >
+              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
+          </div>
+
           <textarea
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
-            placeholder="I want to build a Uber for cats..."
+            placeholder="Example: I want to build another crypto wallet tracker."
             rows={4}
-            className="w-full bg-[#0a0a1a]/50 border border-white/10 rounded-xl p-4 text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all resize-none mb-6"
+            className="w-full bg-[#0a0a1a]/80 border border-white/5 rounded-2xl p-5 text-[#f1f1f1] placeholder-[#4b5563] focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 transition-all resize-none mb-6 text-lg"
           />
 
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="flex p-1 bg-[#0a0a1a]/50 rounded-xl border border-white/5 w-full sm:w-auto">
-              {[
-                { id: "gentle", label: "Gentle", icon: Smile },
-                { id: "savage", label: "Savage", icon: Flame },
-                { id: "vc", label: "VC Mode", icon: Briefcase },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => setIntensity(opt.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    intensity === opt.id 
-                      ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg"
-                      : "text-gray-500 hover:text-gray-300"
-                  }`}
-                >
-                  <opt.icon size={16} />
-                  {opt.label}
-                </button>
-              ))}
+          <div className="flex flex-col gap-6">
+            <div className="space-y-3">
+              <div className="flex justify-between text-xs font-bold text-[#6b7280] uppercase tracking-wider">
+                <span>Roast Intensity</span>
+                <span className="text-[#f97316]">{intensity === "gentle" ? "Merciful" : intensity === "vc" ? "Passive Aggressive" : "Savage"}</span>
+              </div>
+              <div className="flex p-1.5 bg-[#0a0a1a]/80 rounded-2xl border border-white/5">
+                {[
+                  { id: "gentle", label: "Gentle", icon: Smile },
+                  { id: "savage", label: "Savage", icon: Flame },
+                  { id: "vc", label: "VC Mode", icon: Briefcase },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setIntensity(opt.id)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
+                      intensity === opt.id 
+                        ? "bg-gradient-to-r from-[#f97316] to-[#dc2626] text-white shadow-lg shadow-[#f97316]/20"
+                        : "text-[#6b7280] hover:text-[#d1d5db]"
+                    }`}
+                  >
+                    <opt.icon size={16} />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button
               onClick={handleRoast}
               disabled={loading || !idea.trim()}
-              className="w-full sm:flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-orange-500 to-pink-500 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+              className="group relative overflow-hidden w-full py-5 rounded-2xl font-black text-xl text-white bg-white disabled:opacity-50 transition-all"
             >
-              {loading ? (
-                <>
-                  <RefreshCw className="animate-spin" size={20} />
-                  <span>Cooking...</span>
-                </>
-              ) : (
-                <>
-                  <Send size={20} />
-                  <span>Roast My Idea</span>
-                </>
-              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#ea580c] to-[#dc2626] transition-transform group-hover:scale-105" />
+              <div className="relative flex items-center justify-center gap-3">
+                {loading ? (
+                  <>
+                    <RefreshCw className="animate-spin" size={24} />
+                    <span>Cooking your idea...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={24} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    <span>Roast My Idea</span>
+                  </>
+                )}
+              </div>
             </button>
           </div>
         </motion.div>
 
-        {/* Loading Overlay */}
+        {/* Loading Visual Burn */}
         <AnimatePresence>
           {loading && (
-            <motion.p 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="text-center text-sm text-orange-400 italic mb-8"
+              className="fixed inset-0 z-50 bg-[#0a0a1a]/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
             >
-              "{loadingMsg}"
-            </motion.p>
+              <div className="relative mb-8">
+                <div className="w-24 h-24 bg-[#f97316] rounded-full blur-3xl animate-pulse absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                <Flame className="text-[#f97316] relative z-10 animate-bounce" size={80} />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-2">{loadingMsg}</h2>
+              <div className="w-64 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <motion.div 
+                  className="h-full bg-gradient-to-r from-[#f97316] to-[#dc2626]"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 10, ease: "linear" }}
+                />
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
         {/* Error */}
         {error && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center mb-8"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-6 bg-[#dc2626]/10 border border-[#dc2626]/30 rounded-3xl text-[#f87171] font-bold text-center mb-8 flex flex-col items-center gap-2"
           >
-            {error}
+            <Smile size={32} className="rotate-180" />
+            <p>{error}</p>
           </motion.div>
         )}
 
         {/* Results */}
         <AnimatePresence>
           {result && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
-            >
-              <ResultCard title="The Roast" text={result.funnyRoast} icon={Flame} onCopy={copyToClipboard} color="text-orange-400" />
-              <ResultCard title="Weak Points" list={result.whatIsWeak} onCopy={copyToClipboard} color="text-red-400" />
-              <ResultCard title="The Smart Move" text={result.betterMvpVersion} onCopy={copyToClipboard} color="text-green-400" />
-              <ResultCard title="The Pivot Pitch" text={result.shortPitch} onCopy={copyToClipboard} color="text-blue-400" />
-            </motion.div>
+            <div className="space-y-6">
+              <div ref={resultRef} data-export-area className="space-y-4 p-4 -m-4 rounded-3xl bg-transparent">
+                <ResultCard title="Funny Roast" text={result.funnyRoast} icon={Flame} onCopy={copyToClipboard} color="#fb923c" bgColor="rgba(251, 146, 60, 0.05)" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ResultCard title="What Is Weak" list={result.whatIsWeak} onCopy={copyToClipboard} color="#f87171" bgColor="rgba(248, 113, 113, 0.05)" />
+                  <ResultCard title="Short Pitch" text={result.shortPitch} onCopy={copyToClipboard} color="#60a5fa" bgColor="rgba(96, 165, 250, 0.05)" />
+                </div>
+                <ResultCard title="Better MVP Version" text={result.betterMvpVersion} onCopy={copyToClipboard} color="#34d399" bgColor="rgba(52, 211, 153, 0.05)" />
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={exportAsImage}
+                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm font-bold transition-all text-[#f1f1f1]"
+                >
+                  <Download size={18} />
+                  Save Roast Card
+                </button>
+                <button
+                  onClick={() => {
+                    const text = `Check out my IdeaRoaster AI result: "${result.funnyRoast}"\n\nRoast your own at: ${window.location.origin}`;
+                    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 border border-[#1DA1F2]/20 rounded-2xl text-[#1DA1F2] text-sm font-bold transition-all"
+                >
+                  <Share2 size={18} />
+                  Share on X
+                </button>
+              </div>
+            </div>
           )}
         </AnimatePresence>
       </div>
+      
+      <footer className="mt-20 text-[#4b5563] text-xs font-medium tracking-widest uppercase text-center">
+        Built for the Roasters • No Ideas Were Harmed (Maybe)
+      </footer>
     </div>
   );
 }
 
-function ResultCard({ title, text, list, onCopy, icon: Icon, color }: any) {
+function ResultCard({ title, text, list, onCopy, icon: Icon, color, bgColor }: any) {
   const [copied, setCopied] = useState(false);
   const content = list ? list.map((x: string) => `• ${x}`).join("\n") : text || "";
 
@@ -203,27 +325,31 @@ function ResultCard({ title, text, list, onCopy, icon: Icon, color }: any) {
 
   return (
     <motion.div 
-      layout
-      className="bg-[#161633]/40 backdrop-blur-md border border-white/5 rounded-2xl p-5 relative group hover:border-white/10 transition-colors"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{ backgroundColor: bgColor }}
+      className="border border-white/5 rounded-3xl p-6 relative group hover:border-white/10 transition-all"
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {Icon && <Icon className={color} size={18} />}
-          <h3 className={`font-bold uppercase tracking-wider text-xs ${color}`}>{title}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-white/5" style={{ color: color }}>
+            {Icon && <Icon size={20} />}
+          </div>
+          <h3 className="font-black uppercase tracking-tighter text-sm" style={{ color: color }}>{title}</h3>
         </div>
         <button
           onClick={handleCopy}
-          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-all"
+          className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#6b7280] hover:text-white transition-all active:scale-90"
         >
-          {copied ? <span className="text-[10px] font-bold text-green-400">COPIED!</span> : <Copy size={14} />}
+          {copied ? <span className="text-[10px] font-bold text-[#10b981] tracking-tighter">COPIED</span> : <Copy size={16} />}
         </button>
       </div>
-      {text && <p className="text-gray-200 leading-relaxed">{text}</p>}
+      {text && <p className="text-[#f1f1f1] text-lg leading-relaxed font-medium">{text}</p>}
       {list && (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {list.map((item: string, i: number) => (
-            <li key={i} className="flex gap-3 text-gray-200">
-              <span className={color}>•</span>
+            <li key={i} className="flex gap-4 text-[#f1f1f1] text-base font-medium bg-black/20 p-3 rounded-xl border border-white/5">
+              <span style={{ color: color }}>#</span>
               <span className="leading-relaxed">{item}</span>
             </li>
           ))}

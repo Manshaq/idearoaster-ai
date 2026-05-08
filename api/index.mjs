@@ -8,9 +8,8 @@ app.use(express.json({ limit: "1mb" }));
 
 // ─── AI Provider Config ─────────────────────────────────────────────
 const AI_API_KEY = process.env.AI_API_KEY || "";
-const AI_BASE_URL =
-  process.env.AI_BASE_URL || "https://api.groq.com/openai/v1";
-const AI_MODEL = process.env.AI_MODEL || "llama-3.3-70b-versatile";
+const AI_BASE_URL = process.env.AI_BASE_URL || "https://api.deepseek.com";
+const AI_MODEL = process.env.AI_MODEL || "deepseek-chat";
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 function asString(value) {
@@ -55,16 +54,6 @@ function extractJsonFromText(rawText) {
   }
 }
 
-// ─── System prompt ───────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are IdeaRoaster AI — a brutally honest but funny startup idea critic.
-Return ONLY valid JSON with this structure:
-{
-  "funnyRoast": "A funny one-liner roast",
-  "whatIsWeak": ["Weak 1", "Weak 2", "Weak 3"],
-  "betterMvpVersion": "A smarter, simpler way to start",
-  "shortPitch": "A punchy pitch"
-}`;
-
 // ─── Route ───────────────────────────────────────────────────────────
 app.post("/api/roast", async (req, res) => {
   const idea = typeof req.body?.idea === "string" ? req.body.idea : "";
@@ -75,7 +64,7 @@ app.post("/api/roast", async (req, res) => {
   }
 
   if (!AI_API_KEY) {
-    return res.status(500).json({ error: "AI_API_KEY is not configured on the server." });
+    return res.status(500).json({ error: "AI API Key is not configured on the server." });
   }
 
   // Customize prompt based on intensity
@@ -93,27 +82,33 @@ Return ONLY valid JSON with this structure:
   "whatIsWeak": ["Weak 1", "Weak 2", "Weak 3"],
   "betterMvpVersion": "A smarter, simpler way to start",
   "shortPitch": "A punchy pitch"
-}`;
+}
+Important:
+- Only roast the idea, not the user.
+- Keep it funny but useful.
+- Return ONLY the JSON object.`;
 
   try {
-    const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
+    const response = await fetch(`${AI_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${AI_API_KEY}`,
+        "Authorization": `Bearer ${AI_API_KEY}`,
       },
       body: JSON.stringify({
         model: AI_MODEL,
-        temperature: 0.8,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Roast this idea:\n\n${idea}` },
         ],
+        temperature: 0.8,
+        response_format: { type: "json_object" } // DeepSeek/OpenAI support this
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`AI API error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`AI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -125,7 +120,7 @@ Return ONLY valid JSON with this structure:
     return res.json(normalizeRoastResult(parsed));
   } catch (err) {
     console.error("AI proxy error:", err);
-    return res.status(502).json({ error: "AI roast failed" });
+    return res.status(502).json({ error: "Roast failed. Try again with a clearer idea." });
   }
 });
 
