@@ -171,13 +171,13 @@ QUALITY RULES:
       whatIsWeak: Array.isArray(parsed.whatIsWeak) ? parsed.whatIsWeak.slice(0, 3) : [],
       betterVersion: parsed.betterVersion || "",
       firstVersionPlan: Array.isArray(parsed.firstVersionPlan) ? parsed.firstVersionPlan : [],
-      executionStack: parsed.executionStack || {
-        toolsNeeded: [],
-        salesOrDistribution: "",
-        operations: "",
-        marketing: "",
-        paymentsOrMonetization: "",
-        freeTools: []
+      executionStack: {
+        toolsNeeded: Array.isArray(parsed.executionStack?.toolsNeeded) ? parsed.executionStack.toolsNeeded : [],
+        salesOrDistribution: parsed.executionStack?.salesOrDistribution || "Social Media",
+        operations: parsed.executionStack?.operations || "Manual",
+        marketing: parsed.executionStack?.marketing || "Word of Mouth",
+        paymentsOrMonetization: parsed.executionStack?.paymentsOrMonetization || "Stripe/Cash",
+        freeTools: Array.isArray(parsed.executionStack?.freeTools) ? parsed.executionStack.freeTools : []
       },
       noCostComplexityBoosts: Array.isArray(parsed.noCostComplexityBoosts) ? parsed.noCostComplexityBoosts.slice(0, 3) : [],
       riskAndTesting: Array.isArray(parsed.riskAndTesting) ? parsed.riskAndTesting : [],

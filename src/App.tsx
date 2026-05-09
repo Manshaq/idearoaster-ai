@@ -530,12 +530,12 @@ ${result.makeItWin}`;
                     <CopyButton text={JSON.stringify(result.executionStack, null, 2)} onCopy={copyToClipboard} />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <StackItem label="Tools Needed" value={result.executionStack.toolsNeeded.join(", ")} />
-                    <StackItem label="Sales/Distribution" value={result.executionStack.salesOrDistribution} />
-                    <StackItem label="Operations" value={result.executionStack.operations} />
-                    <StackItem label="Marketing" value={result.executionStack.marketing} />
-                    <StackItem label="Monetization" value={result.executionStack.paymentsOrMonetization} />
-                    <StackItem label="Free Tools" value={result.executionStack.freeTools.join(", ")} highlight />
+                    <StackItem label="Tools Needed" value={(result.executionStack?.toolsNeeded || []).join(", ")} />
+                    <StackItem label="Sales/Distribution" value={result.executionStack?.salesOrDistribution} />
+                    <StackItem label="Operations" value={result.executionStack?.operations} />
+                    <StackItem label="Marketing" value={result.executionStack?.marketing} />
+                    <StackItem label="Monetization" value={result.executionStack?.paymentsOrMonetization} />
+                    <StackItem label="Free Tools" value={(result.executionStack?.freeTools || []).join(", ")} highlight />
                   </div>
                 </div>
 
