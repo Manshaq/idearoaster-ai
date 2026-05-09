@@ -155,19 +155,34 @@ function App() {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) return;
 
-      const text = `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\nRoast yours at: ${window.location.origin}`;
+      // 1. Check for Mobile Share first (Truly automatic image attachment)
+      if (typeof navigator.share !== "undefined" && typeof navigator.canShare !== "undefined") {
+        const file = new File([blob], "roast.png", { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: "IdeaRoaster Card",
+            text: `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\nRoast yours at: ${window.location.origin}`,
+          });
+          setSharing(false);
+          return;
+        }
+      }
 
-      // 1. Copy Image to Clipboard (So they can just paste it into the X post)
+      // 2. Desktop/Fallback: Copy Image to Clipboard then open X website
+      // Since we can't 'attach' to a URL, copying to clipboard is the fastest way.
       try {
         const item = new ClipboardItem({ "image/png": blob });
         await navigator.clipboard.write([item]);
-        alert("🔥 Roast Card copied! Paste (Ctrl+V) it into your X post.");
       } catch (err) {
         console.warn("Clipboard copy failed", err);
       }
+
+      const text = `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\nRoast yours at: ${window.location.origin}\n\n(Paste your Roast Card here! 👇)`;
       
-      // 2. Redirect to X Intent Website
+      // Open X website directly
       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
+      
     } catch (err) {
       console.error("Sharing failed", err);
     } finally {
@@ -387,8 +402,8 @@ function App() {
               </div>
               
               <p className="text-center text-[10px] text-[#4b5563] font-medium max-w-sm mx-auto leading-relaxed">
-                Clicking 'Post to X' will automatically copy your Roast Card image.<br/>
-                <strong>Just Paste (Ctrl+V) it into your post!</strong>
+                Tapping 'Post to X' will automatically copy your Roast Card image.<br/>
+                <strong>Just Paste (Ctrl+V) it into your post field!</strong>
               </p>
             </div>
           )}
