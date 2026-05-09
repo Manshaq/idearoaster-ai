@@ -4,13 +4,14 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { body, validationResult } from "express-validator";
 import "dotenv/config";
-import { generateRoastAndRebuild } from "../server/src/services/groqService";
+import { generateRoastAndRebuild } from "./services/groqService";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 
 // Security
+app.set("trust proxy", 1);
 app.use(helmet());
 app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(express.json({ limit: "1mb" }));
