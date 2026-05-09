@@ -158,15 +158,19 @@ function App() {
       const text = `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\nRoast yours at: ${window.location.origin}`;
 
       // 1. Try Native Sharing (Best for Mobile, supports files)
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], "roast.png", { type: "image/png" })] })) {
+      if (typeof navigator.share !== "undefined" && typeof navigator.canShare !== "undefined") {
         const file = new File([blob], "roast.png", { type: "image/png" });
-        await navigator.share({
-          files: [file],
-          title: "My IdeaRoaster Card",
-          text: text,
-        });
-      } else {
-        // 2. Desktop Fallback: Copy to Clipboard and open X
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: "My IdeaRoaster Card",
+            text: text,
+          });
+          return;
+        }
+      }
+      
+      // 2. Desktop Fallback: Copy to Clipboard and open X
         // Most browsers allow copying images to clipboard now
         try {
           const item = new ClipboardItem({ "image/png": blob });
@@ -177,7 +181,6 @@ function App() {
         }
         
         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
-      }
     } catch (err) {
       console.error("Sharing failed", err);
     } finally {
@@ -396,7 +399,7 @@ function App() {
                 </button>
               </div>
               <p className="text-center text-[10px] text-[#4b5563] font-medium max-w-sm mx-auto">
-                {navigator.share ? "Tap 'Share on X' to post your Roast Card automatically!" : "Tip: 'Share on X' copies your Roast Card to the clipboard—just paste (Ctrl+V) it into your post!"}
+                {typeof navigator.share !== "undefined" ? "Tap 'Share on X' to post your Roast Card automatically!" : "Tip: 'Share on X' copies your Roast Card to the clipboard—just paste (Ctrl+V) it into your post!"}
               </p>
             </div>
           )}
