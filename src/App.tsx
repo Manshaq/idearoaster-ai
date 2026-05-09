@@ -134,7 +134,7 @@ function App() {
           const clonedArea = clonedDoc.querySelector("[data-export-area]") as HTMLElement;
           if (clonedArea) {
             clonedArea.style.backdropFilter = "none";
-            clonedArea.style.WebkitBackdropFilter = "none";
+            (clonedArea.style as any).webkitBackdropFilter = "none";
             clonedArea.style.boxShadow = "none";
             clonedArea.style.borderRadius = "24px";
             clonedArea.style.background = "linear-gradient(145deg, #0f0f2d 0%, #1a0f0f 100%)";
