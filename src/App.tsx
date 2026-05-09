@@ -44,14 +44,40 @@ function App() {
     }
   }, [loading]);
 
+  const cleanTextForSpeech = (text: string) => {
+    return text
+      .replace(/\bVC\b/gi, "Vee See")
+      .replace(/\bMVP\b/gi, "Em Vee Pee")
+      .replace(/\bAI\b/gi, "Ay Eye")
+      .replace(/\blol\b/gi, "laughing out loud")
+      .replace(/\bSaaS\b/gi, "Sass")
+      .replace(/\bUX\b/gi, "You Ex")
+      .replace(/#/g, "number ")
+      .replace(/\*/g, "");
+  };
+
   const speak = (text: string) => {
     if (isMuted) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.pitch = 0.8;
-    utterance.rate = 1.1;
+    
+    const cleanedText = cleanTextForSpeech(text);
+    const utterance = new SpeechSynthesisUtterance(cleanedText);
+    
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Male")) || voices[0];
+    
+    if (preferredVoice) utterance.voice = preferredVoice;
+    
+    utterance.pitch = 0.8; // Reverted to former sarcastic voice
+    utterance.rate = 1.0;
+    utterance.volume = 1;
+    
     window.speechSynthesis.speak(utterance);
   };
+
+  useEffect(() => {
+    window.speechSynthesis.getVoices();
+  }, []);
 
   const handleRoast = async () => {
     if (!idea.trim()) return;
@@ -84,7 +110,7 @@ function App() {
       }, 500);
 
     } catch {
-      setError("Roast failed. Try again with a clearer idea.");
+      setError("Roast failed. The villain is busy plotting.");
     } finally {
       setLoading(false);
     }
@@ -97,7 +123,6 @@ function App() {
   const exportAsImage = async () => {
     if (!resultRef.current) return;
     try {
-      // html2canvas fix: temporary remove problematic properties and use simple background
       const element = resultRef.current;
       const canvas = await html2canvas(element, {
         backgroundColor: "#0a0a1a",
@@ -106,10 +131,13 @@ function App() {
         allowTaint: true,
         logging: false,
         onclone: (clonedDoc) => {
-          // Remove modern CSS features that html2canvas can't parse in the clone
-          const clonedElement = clonedDoc.body.querySelector("[data-export-area]");
-          if (clonedElement) {
-            (clonedElement as HTMLElement).style.backdropFilter = "none";
+          const clonedArea = clonedDoc.querySelector("[data-export-area]") as HTMLElement;
+          if (clonedArea) {
+            clonedArea.style.backdropFilter = "none";
+            clonedArea.style.WebkitBackdropFilter = "none";
+            clonedArea.style.boxShadow = "none";
+            clonedArea.style.borderRadius = "24px";
+            clonedArea.style.background = "linear-gradient(145deg, #0f0f2d 0%, #1a0f0f 100%)";
           }
         }
       });
@@ -147,7 +175,7 @@ function App() {
           <p className="text-[#9ca3af] text-xl font-medium mb-1">
             Let AI roast your idea before the market does.
           </p>
-          <p className="text-[#6b7280] text-sm max-w-md mx-auto">
+          <p className="text-[#6b7280] text-sm max-w-md mx-auto text-balance">
             Paste your startup, hackathon, crypto, or app idea and get a funny roast, weak points, and a better direction.
           </p>
         </motion.div>
@@ -218,7 +246,7 @@ function App() {
                 {loading ? (
                   <>
                     <RefreshCw className="animate-spin" size={24} />
-                    <span>Cooking your idea...</span>
+                    <span>Cooking your roast...</span>
                   </>
                 ) : (
                   <>
@@ -273,15 +301,49 @@ function App() {
         <AnimatePresence>
           {result && (
             <div className="space-y-6">
-              <div ref={resultRef} data-export-area className="space-y-4 p-4 -m-4 rounded-3xl bg-transparent">
-                <ResultCard title="Funny Roast" text={result.funnyRoast} icon={Flame} onCopy={copyToClipboard} color="#fb923c" bgColor="rgba(251, 146, 60, 0.05)" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <ResultCard title="What Is Weak" list={result.whatIsWeak} onCopy={copyToClipboard} color="#f87171" bgColor="rgba(248, 113, 113, 0.05)" />
-                  <ResultCard title="Short Pitch" text={result.shortPitch} onCopy={copyToClipboard} color="#60a5fa" bgColor="rgba(96, 165, 250, 0.05)" />
+              {/* The Roaster Card (Export Area) */}
+              <div 
+                ref={resultRef} 
+                data-export-area 
+                className="rounded-3xl p-8 space-y-6 relative overflow-hidden"
+                style={{ 
+                  background: "linear-gradient(145deg, #0f0f2d 0%, #1a0f0f 100%)",
+                  border: "2px solid rgba(249, 115, 22, 0.2)",
+                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
+                }}
+              >
+                {/* Blazing Fire Elements for Card */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#ea580c]" style={{ filter: "blur(80px)", opacity: 0.1, borderRadius: "50%" }} />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#ef4444]" style={{ filter: "blur(80px)", opacity: 0.1, borderRadius: "50%" }} />
+
+                {/* Card Header */}
+                <div className="flex flex-col items-center text-center pb-4" style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}>
+                  <div className="p-2 rounded-xl mb-2" style={{ backgroundColor: "rgba(249, 115, 22, 0.1)", border: "1px solid rgba(249, 115, 22, 0.2)" }}>
+                    <Flame style={{ color: "#f97316" }} size={24} />
+                  </div>
+                  <h2 className="text-2xl font-black" style={{ color: "#f97316" }}>
+                    IdeaRoaster AI
+                  </h2>
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: "#6b7280" }}>Official Roast Certification</p>
                 </div>
-                <ResultCard title="Better MVP Version" text={result.betterMvpVersion} onCopy={copyToClipboard} color="#34d399" bgColor="rgba(52, 211, 153, 0.05)" />
+
+                {/* Card Body */}
+                <div className="space-y-4">
+                  <ResultCard title="The Savage Roast" text={result.funnyRoast} icon={Flame} onCopy={copyToClipboard} color="#fb923c" bgColor="rgba(251, 146, 60, 0.05)" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <ResultCard title="Weak Points" list={result.whatIsWeak} onCopy={copyToClipboard} color="#f87171" bgColor="rgba(248, 113, 113, 0.05)" />
+                    <ResultCard title="The Pivot Pitch" text={result.shortPitch} onCopy={copyToClipboard} color="#60a5fa" bgColor="rgba(96, 165, 250, 0.05)" />
+                  </div>
+                  <ResultCard title="Better MVP Version" text={result.betterMvpVersion} onCopy={copyToClipboard} color="#34d399" bgColor="rgba(52, 211, 153, 0.05)" />
+                </div>
+
+                {/* Card Footer */}
+                <div className="pt-4 flex justify-center" style={{ opacity: 0.3 }}>
+                  <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#6b7280" }}>idearoaster.ai • roasted with savage precision</p>
+                </div>
               </div>
 
+              {/* Actions */}
               <div className="flex gap-4">
                 <button
                   onClick={exportAsImage}
@@ -292,7 +354,7 @@ function App() {
                 </button>
                 <button
                   onClick={() => {
-                    const text = `Check out my IdeaRoaster AI result: "${result.funnyRoast}"\n\nRoast your own at: ${window.location.origin}`;
+                    const text = `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\n(Attachment: My Official Roast Card)\n\nRoast yours at: ${window.location.origin}`;
                     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
                   }}
                   className="flex-1 flex items-center justify-center gap-2 py-4 bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 border border-[#1DA1F2]/20 rounded-2xl text-[#1DA1F2] text-sm font-bold transition-all"
@@ -301,6 +363,7 @@ function App() {
                   Share on X
                 </button>
               </div>
+              <p className="text-center text-[10px] text-[#4b5563] font-medium">Tip: Save your Roast Card and attach it to your X post for maximum impact! 📸</p>
             </div>
           )}
         </AnimatePresence>
@@ -324,38 +387,37 @@ function ResultCard({ title, text, list, onCopy, icon: Icon, color, bgColor }: a
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      style={{ backgroundColor: bgColor }}
-      className="border border-white/5 rounded-3xl p-6 relative group hover:border-white/10 transition-all"
+    <div 
+      style={{ backgroundColor: bgColor, border: "1px solid rgba(255, 255, 255, 0.05)" }}
+      className="rounded-3xl p-6 relative group hover:border-white/10 transition-all h-full"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-white/5" style={{ color: color }}>
+          <div className="p-2 rounded-xl" style={{ backgroundColor: "rgba(255, 255, 255, 0.05)", color: color }}>
             {Icon && <Icon size={20} />}
           </div>
           <h3 className="font-black uppercase tracking-tighter text-sm" style={{ color: color }}>{title}</h3>
         </div>
         <button
           onClick={handleCopy}
-          className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#6b7280] hover:text-white transition-all active:scale-90"
+          className="p-2.5 rounded-xl transition-all active:scale-90"
+          style={{ backgroundColor: "rgba(255, 255, 255, 0.05)", color: "#6b7280" }}
         >
-          {copied ? <span className="text-[10px] font-bold text-[#10b981] tracking-tighter">COPIED</span> : <Copy size={16} />}
+          {copied ? <span className="text-[10px] font-bold tracking-tighter" style={{ color: "#10b981" }}>COPIED</span> : <Copy size={16} />}
         </button>
       </div>
       {text && <p className="text-[#f1f1f1] text-lg leading-relaxed font-medium">{text}</p>}
       {list && (
         <ul className="space-y-3">
           {list.map((item: string, i: number) => (
-            <li key={i} className="flex gap-4 text-[#f1f1f1] text-base font-medium bg-black/20 p-3 rounded-xl border border-white/5">
+            <li key={i} className="flex gap-4 text-[#f1f1f1] text-base font-medium p-3 rounded-xl" style={{ backgroundColor: "rgba(0, 0, 0, 0.2)", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
               <span style={{ color: color }}>#</span>
               <span className="leading-relaxed">{item}</span>
             </li>
           ))}
         </ul>
       )}
-    </motion.div>
+    </div>
   );
 }
 

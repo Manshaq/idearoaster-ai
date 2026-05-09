@@ -8,8 +8,8 @@ app.use(express.json({ limit: "1mb" }));
 
 // ─── AI Provider Config ─────────────────────────────────────────────
 const AI_API_KEY = process.env.AI_API_KEY || "";
-const AI_BASE_URL = process.env.AI_BASE_URL || "https://api.deepseek.com";
-const AI_MODEL = process.env.AI_MODEL || "deepseek-chat";
+const AI_BASE_URL = process.env.AI_BASE_URL || "https://api.groq.com/openai/v1";
+const AI_MODEL = process.env.AI_MODEL || "llama-3.3-70b-versatile";
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 function asString(value) {
@@ -67,25 +67,25 @@ app.post("/api/roast", async (req, res) => {
     return res.status(500).json({ error: "AI API Key is not configured on the server." });
   }
 
-  // Customize prompt based on intensity
-  let personaPrompt = "brutally honest but funny startup idea critic";
+  let personaPrompt = "a brutally honest, sarcastic, and hilarious startup critic";
   if (intensity === "gentle") {
-    personaPrompt = "constructive, kind, but witty startup mentor. Roast the idea gently with a smile";
+    personaPrompt = "a slightly nicer but still witty startup mentor who roasts with a smile";
   } else if (intensity === "vc") {
-    personaPrompt = "skeptical, data-driven, and slightly arrogant Silicon Valley Venture Capitalist. Roast the idea based on market viability and unit economics";
+    personaPrompt = "a skeptical, data-driven, and slightly arrogant Venture Capitalist from Sand Hill Road";
   }
 
-  const systemPrompt = `You are IdeaRoaster AI — a ${personaPrompt}.
+  const systemPrompt = `You are IdeaRoaster AI — ${personaPrompt}.
+Your goal is to roast the user's startup idea with maximum wit and humor.
 Return ONLY valid JSON with this structure:
 {
-  "funnyRoast": "A funny one-liner roast",
-  "whatIsWeak": ["Weak 1", "Weak 2", "Weak 3"],
-  "betterMvpVersion": "A smarter, simpler way to start",
-  "shortPitch": "A punchy pitch"
+  "funnyRoast": "A hilarious, sarcastic roast. Include expressions like 'Haha!', 'LOL!', 'Oh honey...', or 'You can't be serious!' to make it sound more conversational and funny.",
+  "whatIsWeak": ["Weakness 1", "Weakness 2", "Weakness 3"],
+  "betterMvpVersion": "A smarter, simpler way to actually start",
+  "shortPitch": "A punchy, witty pitch"
 }
 Important:
-- Only roast the idea, not the user.
-- Keep it funny but useful.
+- Be hilarious, sharp, and very sarcastic.
+- Use conversational humor.
 - Return ONLY the JSON object.`;
 
   try {
@@ -101,8 +101,8 @@ Important:
           { role: "system", content: systemPrompt },
           { role: "user", content: `Roast this idea:\n\n${idea}` },
         ],
-        temperature: 0.8,
-        response_format: { type: "json_object" } // DeepSeek/OpenAI support this
+        temperature: 0.9,
+        response_format: { type: "json_object" }
       }),
     });
 
@@ -120,23 +120,21 @@ Important:
     return res.json(normalizeRoastResult(parsed));
   } catch (err) {
     console.error("AI proxy error:", err);
-    return res.status(502).json({ error: "Roast failed. Try again with a clearer idea." });
+    return res.status(502).json({ error: "Roast failed. The server is laughing too hard." });
   }
 });
 
 // Health check
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", model: AI_MODEL });
+  res.json({ status: "ok", provider: "Groq", model: AI_MODEL });
 });
 
 // ─── Vercel Compatibility ───────────────────────────────────────────
-// For local development, we still need to listen on a port
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
-    console.log(`🔥 Local server running on http://localhost:${PORT}`);
+    console.log(`🔥 Roaster is live on http://localhost:${PORT}`);
   });
 }
 
-// Export for Vercel
 export default app;
