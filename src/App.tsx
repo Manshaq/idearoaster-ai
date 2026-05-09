@@ -180,22 +180,36 @@ function App() {
 
   const getCanvas = async () => {
     if (!resultRef.current) return null;
-    return html2canvas(resultRef.current, {
-      backgroundColor: "#0a0a1a",
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      onclone: (clonedDoc) => {
-        const clonedArea = clonedDoc.querySelector("[data-export-area]") as HTMLElement;
-        if (clonedArea) {
-          clonedArea.style.backdropFilter = "none";
-          (clonedArea.style as any).webkitBackdropFilter = "none";
-          clonedArea.style.boxShadow = "none";
-          clonedArea.style.borderRadius = "24px";
-          clonedArea.style.background = "linear-gradient(145deg, #0f0f2d 0%, #1a0f0f 100%)";
+    try {
+      return await html2canvas(resultRef.current, {
+        backgroundColor: "#0a0a1a",
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        foreignObjectRendering: true, // Crucial for rendering complex SVGs like Recharts
+        onclone: (clonedDoc) => {
+          const clonedArea = clonedDoc.querySelector("[data-export-area]") as HTMLElement;
+          if (clonedArea) {
+            clonedArea.style.backdropFilter = "none";
+            (clonedArea.style as any).webkitBackdropFilter = "none";
+            clonedArea.style.boxShadow = "none";
+            clonedArea.style.borderRadius = "24px";
+            clonedArea.style.background = "linear-gradient(145deg, #0f0f2d 0%, #1a0f0f 100%)";
+            
+            // Fix for Recharts ResponsiveContainer off-screen rendering
+            const rechartsContainers = clonedArea.querySelectorAll('.recharts-responsive-container');
+            rechartsContainers.forEach((container: any) => {
+              container.style.width = "100%";
+              container.style.height = "250px"; // Force fixed height for clone
+            });
+          }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error("html2canvas error:", error);
+      return null;
+    }
   };
 
   const exportAsImage = async () => {
