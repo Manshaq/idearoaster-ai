@@ -62,7 +62,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ success: true, status: "ok" });
 });
 
-if (process.env.NODE_ENV !== "production") {
+if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`🔥 Roaster & Rebuilder live on port ${PORT}`);
   });
