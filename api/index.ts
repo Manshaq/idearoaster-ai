@@ -4,7 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { body, validationResult } from "express-validator";
 import "dotenv/config";
-import { generateRoastAndRebuild } from "./services/groqService.js";
+import { generateRoastAndRebuild, generateDebate } from "./services/groqService.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -61,6 +61,25 @@ app.post("/api/roast", roastValidation, async (req: express.Request, res: expres
 app.get("/api/health", (_req, res) => {
   res.json({ success: true, status: "ok" });
 });
+
+// Debate route
+app.post("/api/debate",
+  limiter,
+  body("idea").isString().trim().isLength({ min: 20, max: 1500 }).withMessage("Idea must be 20-1500 characters."),
+  async (req: express.Request, res: express.Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, error: errors.array()[0].msg });
+    }
+    try {
+      const result = await generateDebate({ idea: req.body.idea });
+      res.json({ success: true, result });
+    } catch (err: any) {
+      console.error("Debate API Error:", err.message);
+      res.status(500).json({ success: false, error: "Debate failed. The agents are fighting each other." });
+    }
+  }
+);
 
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {

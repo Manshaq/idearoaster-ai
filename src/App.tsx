@@ -1,9 +1,33 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, Flame, Smile, Briefcase, RefreshCw, Send, Share2, Volume2, VolumeX, Download, CheckCircle2, AlertTriangle, Zap, Target, Layers, LayoutTemplate, Activity, ShieldAlert, TrendingUp } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from "recharts";
 import html2canvas from "html2canvas";
 import confetti from "canvas-confetti";
+
+interface IdeaDNA {
+  marketSize: number;
+  executionDifficulty: number;
+  innovationLevel: number;
+  competition: number;
+  monetizationPotential: number;
+  speedToMarket: number;
+}
+
+interface DebateAgent {
+  role: string;
+  emoji: string;
+  color: string;
+  agentName: string;
+  verdict: string;
+  opening: string;
+  points: string[];
+}
+
+interface DebateResult {
+  agents: DebateAgent[];
+  overallVerdict: string;
+}
 
 interface RoastResult {
   ideaType: string;
@@ -13,6 +37,7 @@ interface RoastResult {
     label: string;
     reason: string;
   };
+  ideaDNA: IdeaDNA;
   whatIsWeak: string[];
   betterVersion: string;
   firstVersionPlan: string[];
@@ -72,6 +97,9 @@ function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [debate, setDebate] = useState<DebateResult | null>(null);
+  const [debateLoading, setDebateLoading] = useState(false);
+  const [debateError, setDebateError] = useState("");
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -139,6 +167,8 @@ function App() {
     setLoading(true);
     setError("");
     setResult(null);
+    setDebate(null);
+    setDebateError("");
     window.speechSynthesis.cancel();
 
     try {
@@ -171,6 +201,30 @@ function App() {
       setError(err.message || "Roast failed. The server is laughing too hard.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDebate = async () => {
+    if (!idea.trim() || idea.length < 20) {
+      setDebateError("Enter an idea above first, then trigger the debate!");
+      return;
+    }
+    setDebateLoading(true);
+    setDebateError("");
+    setDebate(null);
+    try {
+      const response = await fetch("/api/debate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || `HTTP ${response.status}`);
+      setDebate(data.result);
+    } catch (err: any) {
+      setDebateError(err.message || "Debate failed. The agents couldn't agree.");
+    } finally {
+      setDebateLoading(false);
     }
   };
 
@@ -543,6 +597,19 @@ ${result.makeItWin}`;
                   </div>
                 </div>
 
+                {/* Idea DNA Fingerprint */}
+                {result.ideaDNA && (
+                  <div className="bg-black/20 border border-white/5 rounded-3xl p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-black uppercase tracking-widest text-sm text-[#e879f9] flex items-center gap-2">
+                        <Zap size={18} />
+                        Idea DNA Fingerprint
+                      </h3>
+                    </div>
+                    <IdeaDNAChart dna={result.ideaDNA} />
+                  </div>
+                )}
+
                 {/* Market Traction Simulator */}
                 <div className="bg-black/20 border border-white/5 rounded-3xl p-6">
                   <div className="flex justify-between items-center mb-6">
@@ -646,6 +713,62 @@ ${result.makeItWin}`;
                 Tapping 'Post to X' will automatically copy your Report Card image.<br/>
                 <strong>Just Paste (Ctrl+V) it into your post field!</strong>
               </p>
+            {/* Multi-Agent Debate Panel */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mt-4 rounded-[2rem] overflow-hidden"
+              style={{ border: "2px solid rgba(167,139,250,0.2)", background: "linear-gradient(145deg, #0d0d2b 0%, #1a0a2e 100%)" }}
+            >
+              <div className="p-6 md:p-8">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                  <div>
+                    <h2 className="text-xl font-black text-white flex items-center gap-2">
+                      <span>🤖</span> Multi-Agent Debate
+                    </h2>
+                    <p className="text-sm text-gray-400 mt-1">3 AI agents debate your idea simultaneously in parallel</p>
+                  </div>
+                  <button
+                    onClick={handleDebate}
+                    disabled={debateLoading}
+                    className="shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-white transition-all disabled:opacity-50 hover:scale-105 active:scale-95"
+                    style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
+                  >
+                    {debateLoading ? <RefreshCw className="animate-spin" size={18} /> : <span>⚡</span>}
+                    {debateLoading ? "Agents Debating..." : debate ? "Re-Run Debate" : "Start Debate"}
+                  </button>
+                </div>
+
+                {debateError && (
+                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm font-bold mb-4">
+                    {debateError}
+                  </div>
+                )}
+
+                {debateLoading && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {["🔥 The Critic", "🚀 The Builder", "💰 The VC"].map((label) => (
+                      <div key={label} className="bg-white/5 rounded-2xl p-5 animate-pulse">
+                        <p className="text-white font-black mb-3">{label}</p>
+                        <div className="h-2 bg-white/10 rounded mb-2 w-full" />
+                        <div className="h-2 bg-white/10 rounded mb-2 w-5/6" />
+                        <div className="h-2 bg-white/10 rounded w-3/4" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {debate && <DebatePanel debate={debate} />}
+
+                {!debate && !debateLoading && (
+                  <div className="text-center py-8">
+                    <p className="text-5xl mb-3">🤖</p>
+                    <p className="font-bold text-gray-500">Click "Start Debate" to pit 3 AI agents against your idea</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -776,6 +899,105 @@ function TractionSimulator({ score }: { score: number }) {
             <Area type="monotone" dataKey="users" stroke={color} strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
           </AreaChart>
         </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function IdeaDNAChart({ dna }: { dna: any }) {
+  const radarData = [
+    { label: "Market Size", value: dna.marketSize },
+    { label: "Monetization", value: dna.monetizationPotential },
+    { label: "Speed", value: dna.speedToMarket },
+    { label: "Innovation", value: dna.innovationLevel },
+    { label: "Low Competition", value: 100 - dna.competition },
+    { label: "Easy to Build", value: 100 - dna.executionDifficulty },
+  ];
+  const bars = [
+    { label: "Market Size", value: dna.marketSize, color: "#e879f9" },
+    { label: "Monetization", value: dna.monetizationPotential, color: "#22c55e" },
+    { label: "Innovation", value: dna.innovationLevel, color: "#3b82f6" },
+    { label: "Speed to Market", value: dna.speedToMarket, color: "#f97316" },
+    { label: "Competition", value: dna.competition, color: "#ef4444", invert: true },
+    { label: "Exec. Difficulty", value: dna.executionDifficulty, color: "#eab308", invert: true },
+  ];
+  return (
+    <div className="flex flex-col md:flex-row items-center gap-6">
+      <div className="w-full md:w-72 h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart data={radarData}>
+            <PolarGrid stroke="rgba(255,255,255,0.08)" />
+            <PolarAngleAxis dataKey="label" tick={{ fill: "#9ca3af", fontSize: 10, fontWeight: "bold" }} />
+            <Radar name="Idea" dataKey="value" stroke="#e879f9" fill="#e879f9" fillOpacity={0.2} strokeWidth={2} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex-1 grid grid-cols-2 gap-3 w-full">
+        {bars.map(({ label, value, color, invert }) => (
+          <div key={label} className="bg-black/30 rounded-xl p-3 border border-white/5">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</span>
+              <span className="text-sm font-black" style={{ color }}>{value}</span>
+            </div>
+            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${value}%`, backgroundColor: invert ? (value > 60 ? "#ef4444" : "#22c55e") : color }}
+              />
+            </div>
+            {invert && <p className="text-[10px] text-gray-600 mt-1">{value > 60 ? "⚠️ High" : "✅ Low"}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DebatePanel({ debate }: { debate: DebateResult }) {
+  const verdictConfig: Record<string, { color: string; label: string; emoji: string }> = {
+    FUNDABLE: { color: "#22c55e", label: "FUNDABLE", emoji: "🏆" },
+    BACK_TO_DRAWING_BOARD: { color: "#ef4444", label: "BACK TO DRAWING BOARD", emoji: "💀" },
+  };
+  const vConfig = verdictConfig[debate.overallVerdict] || { color: "#eab308", label: debate.overallVerdict, emoji: "🤔" };
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {debate.agents.map((agent) => (
+          <motion.div
+            key={agent.role}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="rounded-2xl p-5 border border-white/5 bg-black/30"
+          >
+            <div className="flex justify-between items-start mb-3">
+              <p className="font-black text-white text-base">{agent.emoji} {agent.agentName}</p>
+              <span
+                className="text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shrink-0 ml-2"
+                style={{ backgroundColor: `${agent.color}22`, color: agent.color }}
+              >
+                {agent.verdict}
+              </span>
+            </div>
+            <p className="text-sm text-gray-300 italic mb-3 leading-relaxed">"{agent.opening}"</p>
+            <ul className="space-y-2">
+              {agent.points.map((pt, i) => (
+                <li key={i} className="text-xs text-gray-400 flex gap-2">
+                  <span style={{ color: agent.color }} className="shrink-0 font-black mt-0.5">▸</span>
+                  <span>{pt}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        ))}
+      </div>
+      <div
+        className="rounded-2xl p-5 text-center border"
+        style={{ borderColor: `${vConfig.color}40`, backgroundColor: `${vConfig.color}11` }}
+      >
+        <p className="text-2xl mb-1">{vConfig.emoji}</p>
+        <p className="font-black text-lg tracking-widest uppercase" style={{ color: vConfig.color }}>
+          Panel Verdict: {vConfig.label}
+        </p>
       </div>
     </div>
   );
