@@ -157,29 +157,17 @@ function App() {
 
       const text = `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\nRoast yours at: ${window.location.origin}`;
 
-      // 1. Try Native Sharing (Best for Mobile, attaches image automatically)
-      if (typeof navigator.share !== "undefined" && typeof navigator.canShare !== "undefined") {
-        const file = new File([blob], "roast.png", { type: "image/png" });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: "My IdeaRoaster Card",
-            text: text,
-          });
-          return;
-        }
-      }
-
-      // 2. Desktop Fallback: Copy Image to Clipboard then open X
+      // 1. Copy Image to Clipboard (So they can just paste it into the X post)
       try {
         const item = new ClipboardItem({ "image/png": blob });
         await navigator.clipboard.write([item]);
-        alert("🔥 Roast Card copied to clipboard! Paste it (Ctrl+V) into your X post.");
+        alert("🔥 Roast Card copied! Paste (Ctrl+V) it into your X post.");
       } catch (err) {
         console.warn("Clipboard copy failed", err);
       }
       
-      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
+      // 2. Redirect to X Intent Website
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
     } catch (err) {
       console.error("Sharing failed", err);
     } finally {
@@ -380,7 +368,7 @@ function App() {
                 <button
                   onClick={handleShareToX}
                   disabled={sharing}
-                  className="w-full relative group overflow-hidden py-5 rounded-2xl font-black text-xl text-white transition-all disabled:opacity-50"
+                  className="w-full relative group overflow-hidden py-5 rounded-2xl font-black text-xl text-white transition-all disabled:opacity-50 shadow-lg shadow-[#1DA1F2]/20"
                 >
                   <div className="absolute inset-0 bg-[#1DA1F2]" />
                   <div className="relative flex items-center justify-center gap-3">
@@ -398,10 +386,9 @@ function App() {
                 </button>
               </div>
               
-              <p className="text-center text-[10px] text-[#4b5563] font-medium max-w-sm mx-auto">
-                {typeof navigator.share !== "undefined" 
-                  ? "Tapping 'Post to X' will automatically attach your Roast Card image!" 
-                  : "On Desktop? 'Post to X' copies your Roast Card to the clipboard—just Paste (Ctrl+V) it into your post!"}
+              <p className="text-center text-[10px] text-[#4b5563] font-medium max-w-sm mx-auto leading-relaxed">
+                Clicking 'Post to X' will automatically copy your Roast Card image.<br/>
+                <strong>Just Paste (Ctrl+V) it into your post!</strong>
               </p>
             </div>
           )}
