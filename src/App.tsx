@@ -187,7 +187,6 @@ function App() {
         useCORS: true,
         allowTaint: true,
         logging: false,
-        foreignObjectRendering: true, // Crucial for rendering complex SVGs like Recharts
         onclone: (clonedDoc) => {
           const clonedArea = clonedDoc.querySelector("[data-export-area]") as HTMLElement;
           if (clonedArea) {
@@ -198,10 +197,15 @@ function App() {
             clonedArea.style.background = "linear-gradient(145deg, #0f0f2d 0%, #1a0f0f 100%)";
             
             // Fix for Recharts ResponsiveContainer off-screen rendering
-            const rechartsContainers = clonedArea.querySelectorAll('.recharts-responsive-container');
-            rechartsContainers.forEach((container: any) => {
+            const rechartsWrappers = clonedArea.querySelectorAll('.recharts-wrapper, .recharts-responsive-container');
+            rechartsWrappers.forEach((container: any) => {
               container.style.width = "100%";
-              container.style.height = "250px"; // Force fixed height for clone
+              container.style.height = "250px";
+            });
+            const svgs = clonedArea.querySelectorAll('.recharts-surface');
+            svgs.forEach((svg: any) => {
+              svg.style.width = "100%";
+              svg.style.height = "100%";
             });
           }
         }
