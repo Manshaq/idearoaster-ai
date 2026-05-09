@@ -62,8 +62,10 @@ app.get("/api/health", (_req, res) => {
   res.json({ success: true, status: "ok" });
 });
 
-app.listen(PORT, () => {
-  console.log(`🔥 Roaster & Rebuilder live on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`🔥 Roaster & Rebuilder live on port ${PORT}`);
+  });
+}
 
 export default app;
