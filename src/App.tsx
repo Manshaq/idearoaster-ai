@@ -145,7 +145,7 @@ function App() {
     link.click();
   };
 
-  const handleShare = async () => {
+  const handleShareToX = async () => {
     if (!result) return;
     setSharing(true);
     try {
@@ -157,7 +157,7 @@ function App() {
 
       const text = `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\nRoast yours at: ${window.location.origin}`;
 
-      // 1. Try Native Sharing (Best for Mobile, supports files)
+      // 1. Try Native Sharing (Best for Mobile, attaches image automatically)
       if (typeof navigator.share !== "undefined" && typeof navigator.canShare !== "undefined") {
         const file = new File([blob], "roast.png", { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
@@ -169,18 +169,17 @@ function App() {
           return;
         }
       }
+
+      // 2. Desktop Fallback: Copy Image to Clipboard then open X
+      try {
+        const item = new ClipboardItem({ "image/png": blob });
+        await navigator.clipboard.write([item]);
+        alert("🔥 Roast Card copied to clipboard! Paste it (Ctrl+V) into your X post.");
+      } catch (err) {
+        console.warn("Clipboard copy failed", err);
+      }
       
-      // 2. Desktop Fallback: Copy to Clipboard and open X
-        // Most browsers allow copying images to clipboard now
-        try {
-          const item = new ClipboardItem({ "image/png": blob });
-          await navigator.clipboard.write([item]);
-          alert("🔥 Roast Card copied to clipboard! Paste it (Ctrl+V) into your X post.");
-        } catch (err) {
-          console.warn("Clipboard image copy failed", err);
-        }
-        
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
     } catch (err) {
       console.error("Sharing failed", err);
     } finally {
@@ -349,11 +348,9 @@ function App() {
                   boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
                 }}
               >
-                {/* Blazing Fire Elements for Card */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#ea580c]" style={{ filter: "blur(80px)", opacity: 0.1, borderRadius: "50%" }} />
                 <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#ef4444]" style={{ filter: "blur(80px)", opacity: 0.1, borderRadius: "50%" }} />
 
-                {/* Card Header */}
                 <div className="flex flex-col items-center text-center pb-4" style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}>
                   <div className="p-2 rounded-xl mb-2" style={{ backgroundColor: "rgba(249, 115, 22, 0.1)", border: "1px solid rgba(249, 115, 22, 0.2)" }}>
                     <Flame style={{ color: "#f97316" }} size={24} />
@@ -364,7 +361,6 @@ function App() {
                   <p className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: "#6b7280" }}>Official Roast Certification</p>
                 </div>
 
-                {/* Card Body */}
                 <div className="space-y-4">
                   <ResultCard title="The Savage Roast" text={result.funnyRoast} icon={Flame} onCopy={copyToClipboard} color="#fb923c" bgColor="rgba(251, 146, 60, 0.05)" />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -374,32 +370,38 @@ function App() {
                   <ResultCard title="Better MVP Version" text={result.betterMvpVersion} onCopy={copyToClipboard} color="#34d399" bgColor="rgba(52, 211, 153, 0.05)" />
                 </div>
 
-                {/* Card Footer */}
                 <div className="pt-4 flex justify-center" style={{ opacity: 0.3 }}>
                   <p className="text-[8px] font-bold tracking-widest uppercase" style={{ color: "#6b7280" }}>idearoaster.ai • roasted with savage precision</p>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-4">
+                <button
+                  onClick={handleShareToX}
+                  disabled={sharing}
+                  className="w-full relative group overflow-hidden py-5 rounded-2xl font-black text-xl text-white transition-all disabled:opacity-50"
+                >
+                  <div className="absolute inset-0 bg-[#1DA1F2]" />
+                  <div className="relative flex items-center justify-center gap-3">
+                    {sharing ? <RefreshCw className="animate-spin" size={24} /> : <Share2 size={24} />}
+                    <span>Post Roast to X</span>
+                  </div>
+                </button>
+
                 <button
                   onClick={exportAsImage}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm font-bold transition-all text-[#f1f1f1]"
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-sm font-bold transition-all text-[#f1f1f1]"
                 >
                   <Download size={18} />
-                  Save Roast Card
-                </button>
-                <button
-                  onClick={handleShare}
-                  disabled={sharing}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 border border-[#1DA1F2]/20 rounded-2xl text-[#1DA1F2] text-sm font-bold transition-all disabled:opacity-50"
-                >
-                  {sharing ? <RefreshCw className="animate-spin" size={18} /> : <Share2 size={18} />}
-                  Share on X
+                  Download Roast Card
                 </button>
               </div>
+              
               <p className="text-center text-[10px] text-[#4b5563] font-medium max-w-sm mx-auto">
-                {typeof navigator.share !== "undefined" ? "Tap 'Share on X' to post your Roast Card automatically!" : "Tip: 'Share on X' copies your Roast Card to the clipboard—just paste (Ctrl+V) it into your post!"}
+                {typeof navigator.share !== "undefined" 
+                  ? "Tapping 'Post to X' will automatically attach your Roast Card image!" 
+                  : "On Desktop? 'Post to X' copies your Roast Card to the clipboard—just Paste (Ctrl+V) it into your post!"}
               </p>
             </div>
           )}
