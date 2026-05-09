@@ -4,7 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { body, validationResult } from "express-validator";
 import "dotenv/config";
-import { generateRoastAndRebuild } from "./services/groqService";
+import { generateRoastAndRebuild } from "./services/groqService.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
