@@ -32,6 +32,7 @@ function App() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<RoastResult | null>(null);
   const [isMuted, setIsMuted] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,19 +60,14 @@ function App() {
   const speak = (text: string) => {
     if (isMuted) return;
     window.speechSynthesis.cancel();
-    
     const cleanedText = cleanTextForSpeech(text);
     const utterance = new SpeechSynthesisUtterance(cleanedText);
-    
     const voices = window.speechSynthesis.getVoices();
     const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Male")) || voices[0];
-    
     if (preferredVoice) utterance.voice = preferredVoice;
-    
-    utterance.pitch = 0.8; // Reverted to former sarcastic voice
+    utterance.pitch = 0.8;
     utterance.rate = 1.0;
     utterance.volume = 1;
-    
     window.speechSynthesis.speak(utterance);
   };
 
@@ -110,7 +106,7 @@ function App() {
       }, 500);
 
     } catch {
-      setError("Roast failed. The villain is busy plotting.");
+      setError("Roast failed. The server is laughing too hard.");
     } finally {
       setLoading(false);
     }
@@ -120,34 +116,72 @@ function App() {
     await navigator.clipboard.writeText(text);
   };
 
-  const exportAsImage = async () => {
-    if (!resultRef.current) return;
-    try {
-      const element = resultRef.current;
-      const canvas = await html2canvas(element, {
-        backgroundColor: "#0a0a1a",
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        onclone: (clonedDoc) => {
-          const clonedArea = clonedDoc.querySelector("[data-export-area]") as HTMLElement;
-          if (clonedArea) {
-            clonedArea.style.backdropFilter = "none";
-            (clonedArea.style as any).webkitBackdropFilter = "none";
-            clonedArea.style.boxShadow = "none";
-            clonedArea.style.borderRadius = "24px";
-            clonedArea.style.background = "linear-gradient(145deg, #0f0f2d 0%, #1a0f0f 100%)";
-          }
+  const getCanvas = async () => {
+    if (!resultRef.current) return null;
+    return html2canvas(resultRef.current, {
+      backgroundColor: "#0a0a1a",
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      onclone: (clonedDoc) => {
+        const clonedArea = clonedDoc.querySelector("[data-export-area]") as HTMLElement;
+        if (clonedArea) {
+          clonedArea.style.backdropFilter = "none";
+          (clonedArea.style as any).webkitBackdropFilter = "none";
+          clonedArea.style.boxShadow = "none";
+          clonedArea.style.borderRadius = "24px";
+          clonedArea.style.background = "linear-gradient(145deg, #0f0f2d 0%, #1a0f0f 100%)";
         }
-      });
-      const link = document.createElement("a");
-      link.download = "idearoaster-card.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      }
+    });
+  };
+
+  const exportAsImage = async () => {
+    const canvas = await getCanvas();
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = "idearoaster-card.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  const handleShare = async () => {
+    if (!result) return;
+    setSharing(true);
+    try {
+      const canvas = await getCanvas();
+      if (!canvas) return;
+
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) return;
+
+      const text = `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\nRoast yours at: ${window.location.origin}`;
+
+      // 1. Try Native Sharing (Best for Mobile, supports files)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], "roast.png", { type: "image/png" })] })) {
+        const file = new File([blob], "roast.png", { type: "image/png" });
+        await navigator.share({
+          files: [file],
+          title: "My IdeaRoaster Card",
+          text: text,
+        });
+      } else {
+        // 2. Desktop Fallback: Copy to Clipboard and open X
+        // Most browsers allow copying images to clipboard now
+        try {
+          const item = new ClipboardItem({ "image/png": blob });
+          await navigator.clipboard.write([item]);
+          alert("🔥 Roast Card copied to clipboard! Paste it (Ctrl+V) into your X post.");
+        } catch (err) {
+          console.warn("Clipboard image copy failed", err);
+        }
+        
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
+      }
     } catch (err) {
-      console.error("Export failed:", err);
-      alert("Roast card export failed. Try taking a screenshot instead!");
+      console.error("Sharing failed", err);
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -246,7 +280,7 @@ function App() {
                 {loading ? (
                   <>
                     <RefreshCw className="animate-spin" size={24} />
-                    <span>Cooking your roast...</span>
+                    <span>Roasting your idea...</span>
                   </>
                 ) : (
                   <>
@@ -259,7 +293,7 @@ function App() {
           </div>
         </motion.div>
 
-        {/* Loading Visual Burn */}
+        {/* Loading Overlay */}
         <AnimatePresence>
           {loading && (
             <motion.div 
@@ -353,17 +387,17 @@ function App() {
                   Save Roast Card
                 </button>
                 <button
-                  onClick={() => {
-                    const text = `I just got roasted by IdeaRoaster AI! 🔥\n\n"${result.funnyRoast}"\n\n(Attachment: My Official Roast Card)\n\nRoast yours at: ${window.location.origin}`;
-                    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`);
-                  }}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 border border-[#1DA1F2]/20 rounded-2xl text-[#1DA1F2] text-sm font-bold transition-all"
+                  onClick={handleShare}
+                  disabled={sharing}
+                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 border border-[#1DA1F2]/20 rounded-2xl text-[#1DA1F2] text-sm font-bold transition-all disabled:opacity-50"
                 >
-                  <Share2 size={18} />
+                  {sharing ? <RefreshCw className="animate-spin" size={18} /> : <Share2 size={18} />}
                   Share on X
                 </button>
               </div>
-              <p className="text-center text-[10px] text-[#4b5563] font-medium">Tip: Save your Roast Card and attach it to your X post for maximum impact! 📸</p>
+              <p className="text-center text-[10px] text-[#4b5563] font-medium max-w-sm mx-auto">
+                {navigator.share ? "Tap 'Share on X' to post your Roast Card automatically!" : "Tip: 'Share on X' copies your Roast Card to the clipboard—just paste (Ctrl+V) it into your post!"}
+              </p>
             </div>
           )}
         </AnimatePresence>
